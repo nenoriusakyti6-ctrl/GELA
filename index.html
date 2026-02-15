@@ -2,7 +2,7 @@
 <html lang="lt">
 <head>
 <meta charset="UTF-8">
-<title>GELA Dienynas</title>
+<title>Dienynas</title>
 <link rel="stylesheet" href="style.css">
 <style>
 body { font-family: Arial, sans-serif; margin: 20px; background:#f7f7f7; }
@@ -16,7 +16,7 @@ td, th { border:1px solid #ccc; padding:5px; text-align:center; }
 </head>
 <body>
 
-<h1>GELA – Mini Dienynas</h1>
+<h1>Dienynas</h1>
 
 <div id="auth-section">
   <h2>Prisijungimas</h2>
@@ -55,8 +55,8 @@ const db = firebase.firestore();
 
 // Login
 function login(){
-  const email=document.getElementById('email').value;
-  const password=document.getElementById('password').value;
+  const email = document.getElementById('email').value;
+  const password = document.getElementById('password').value;
 
   // Tik admin gali prisijungti tiesiogiai
   if(email==="admin@gela.lt"){
