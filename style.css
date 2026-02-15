@@ -1,7 +1,10 @@
-body {font-family:Arial, sans-serif; margin:20px; background:#f7f7f7;}
-input, button {margin:5px;padding:5px;}
-h1,h2,h3,h4{margin-top:20px;}
-#dashboard{margin-top:20px;padding:10px;background:#fff;border-radius:5px;}
-button{cursor:pointer;}
-table{border-collapse:collapse;width:100%;margin-top:10px;}
-td, th{border:1px solid #ccc;padding:5px;text-align:center;}
+body {font-family: Arial, sans-serif; background:#f5f5f5; margin:0; padding:0;}
+#login-section {width:300px; margin:50px auto; padding:20px; background:#fff; border-radius:8px; text-align:center;}
+#login-section input {display:block; width:90%; margin:10px auto; padding:8px;}
+#login-section button {padding:8px 20px; cursor:pointer;}
+#dashboard-section {padding:20px;}
+#top-bar {display:flex; justify-content:space-between; align-items:center; background:#1976d2; color:#fff; padding:10px; border-radius:8px;}
+table {border-collapse: collapse; width:100%; margin-top:15px; background:#fff; border-radius:5px; overflow:hidden;}
+th, td {border:1px solid #ccc; padding:8px; text-align:center;}
+th {background:#1976d2; color:#fff;}
+button {cursor:pointer; padding:5px 10px; margin:2px;}
