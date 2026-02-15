@@ -7,18 +7,18 @@
 </head>
 <body>
 
-<h1>Dienynas</h1>
-
-<div id="auth-section">
-  <h2>Prisijungimas</h2>
+<div id="login-section">
+  <h1>Dienynas</h1>
   <input type="email" id="email" placeholder="El. paštas">
   <input type="password" id="password" placeholder="Slaptažodis">
   <button id="login-btn">Prisijungti</button>
 </div>
 
-<div id="app-section" style="display:none;">
-  <h2>Sveiki, <span id="user-name"></span> (<span id="user-role"></span>)</h2>
-  <button id="logout-btn">Atsijungti</button>
+<div id="dashboard-section" style="display:none;">
+  <div id="top-bar">
+    <h1>Dienynas</h1>
+    <button id="logout-btn">Atsijungti</button>
+  </div>
   <div id="dashboard"></div>
 </div>
 
