@@ -8,3 +8,5 @@ table {border-collapse: collapse; width:100%; margin-top:15px; background:#fff; 
 th, td {border:1px solid #ccc; padding:8px; text-align:center;}
 th {background:#1976d2; color:#fff;}
 button {cursor:pointer; padding:5px 10px; margin:2px;}
+select {padding:5px; margin:5px;}
+input[type=text] {width:80px;}
