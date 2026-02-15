@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="lt">
+<head>
+<meta charset="UTF-8">
+<title>GELA – Mini Dienynas</title>
+<style>
+/* CSS dalis */
+body { font-family: Arial, sans-serif; margin: 20px; background:#f7f7f7; }
+input, select, button { margin:5px; padding:5px; }
+h1,h2,h3,h4 { margin-top:20px; }
+#dashboard { margin-top:20px; padding:10px; background:#fff; border-radius:5px; }
+button { cursor:pointer; }
+</style>
+
+<!-- Firebase SDKs -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js"></script>
+
+</head>
+<body>
+
+<h1>GELA – Mini Dienynas</h1>
+
+<div id="auth-section">
+  <h2>Prisijungimas / Registracija</h2>
+  <input type="email" id="email" placeholder="El. paštas">
+  <input type="password" id="password" placeholder="Slaptažodis">
+  <select id="role">
+    <option value="admin">Admin</option>
+    <option value="teacher">Mokytojas</option>
+    <option value="student">Mokinys</option>
+    <option value="parent">Tėvai</option>
+  </select>
+  <button onclick="register()">Registruotis</button>
+  <button onclick="login()">Prisijungti</button>
+</div>
+
+<div id="app-section" style="display:none;">
+  <h2>Sveiki, <span id="user-name"></span> (<span id="user-role"></span>)</h2>
+  <button onclick="logout()">Atsijungti</button>
+  <div id="dashboard"></div>
+</div>
+
+<script>
+// -------------------- JAVASCRIPT DALIS --------------------
+
+// Firebase config (tavo)
+const firebaseConfig = {
+  apiKey: "AIzaSyAvkDsz6eAoPN2dMqvoTho5xv1yc490V7A",
+  authDomain: "gela-34020.firebaseapp.com",
+  projectId: "gela-34020",
+  storageBucket: "gela-34020.firebasestorage.app",
+  messagingSenderId: "668623580567",
+  appId: "1:668623580567:web:cc1ea4582d3018978fa8d2",
+  measurementId: "G-RNP6YBNGRM"
+};
+
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
+
+// Registracija
+async function register(){
+  const email=document.getElementById('email').value;
+  const password=document.getElementById('password').value;
+  const role=document.getElementById('role').value;
+  try{
+    const userCredential=await auth.createUserWithEmailAndPassword(email,password);
+    const uid=userCredential.user.uid;
+    await db.collection("users").doc(uid).set({email,role});
+    alert("Registracija sėkminga");
+  }catch(err){alert(err.message);}
+}
+
+// Prisijungimas
+async function login(){
+  const email=document.getElementById('email').value;
+  const password=document.getElementById('password').value;
+  try{
+    const userCredential=await auth.signInWithEmailAndPassword(email,password);
+    const uid=userCredential.user.uid;
+    const userDoc=await db.collection("users").doc(uid).get();
+    document.getElementById('auth-section').style.display='none';
+    document.getElementById('app-section').style.display='block';
+    document.getElementById('user-name').innerText=email;
+    document.getElementById('user-role').innerText=userDoc.data().role;
+    loadDashboard(userDoc.data().role,uid);
+  }catch(err){alert(err.message);}
+}
+
+// Atsijungimas
+async function logout(){
+  await auth.signOut();
+  document.getElementById('auth-section').style.display='block';
+  document.getElementById('app-section').style.display='none';
+}
+
+// Dashboard
+async function loadDashboard(role,uid){
+  const dash=document.getElementById('dashboard');
+  dash.innerHTML="";
+  if(role==="admin"){
+    dash.innerHTML+="<h3>Admin modulis</h3><button onclick='createClass()'>Kurti klasę</button><div id='classes-list'></div>";
+    loadClasses();
+  }else if(role==="teacher"){
+    dash.innerHTML+="<h3>Mokytojo modulis</h3><div id='teacher-actions'></div>";
+    loadTeacher(uid);
+  }else if(role==="student"){
+    dash.innerHTML+="<h3>Mokinio modulis</h3>";
+    loadStudent(uid);
+  }else if(role==="parent"){
+    dash.innerHTML+="<h3>Tėvų modulis</h3>";
+    loadParent(uid);
+  }
+}
+
+// -------------------- ADMIN --------------------
+async function createClass(){
+  const className=prompt("Įveskite klasės pavadinimą:");
+  if(!className) return;
+  await db.collection("classes").doc(className).set({name:className,students:[],teachers:[]});
+  loadClasses();
+}
+async function loadClasses(){
+  const snapshot=await db.collection("classes").get();
+  let html="<ul>";
+  snapshot.forEach(doc=>{html+=`<li>${doc.id} <button onclick="deleteClass('${doc.id}')">Ištrinti</button></li>`});
+  html+="</ul>";
+  document.getElementById('classes-list').innerHTML=html;
+}
+async function deleteClass(classId){if(confirm("Ar tikrai ištrinti?")){await db.collection("classes").doc(classId).delete();loadClasses();}}
+
+// -------------------- MOKYTOJAS --------------------
+async function loadTeacher(uid){
+  const snapshot=await db.collection("classes").get();
+  let html="<h4>Klasių valdymas</h4>";
+  snapshot.forEach(doc=>{
+    html+=`<div>${doc.id} 
+      <button onclick="addGrade('${doc.id}')">Pažymys</button> 
+      <button onclick="addAttendance('${doc.id}')">Lankomumas</button>
+      <button onclick="addHomework('${doc.id}')">Namų darbai</button>
+      <button onclick="addAssessment('${doc.id}')">Atsiskaitymai</button>
+    </div>`;
+  });
+  document.getElementById('teacher-actions').innerHTML=html;
+}
+async function addGrade(classId){
+  const student=prompt("Mokinio ID:");
+  const subject=prompt("Dalykas:");
+  const type=prompt("Tipas (kontrolinis/atsiskaitymas/rašinys/apklausa):");
+  const value=parseInt(prompt("Pažymys (1–10):"));
+  const date=new Date().toISOString().split('T')[0];
+  await db.collection("grades").add({studentId:student,classId,subject,type,value,date});
+  alert("Pažymys pridėtas");
+}
+async function addAttendance(classId){
+  const student=prompt("Mokinio ID:");
+  const date=prompt("Data (YYYY-MM-DD):");
+  const status=prompt("Statusas (dalyvavo/nebuvo/pateisinta):");
+  await db.collection("attendance").add({studentId:student,classId,date,status});
+  alert("Lankomumas pažymėtas");
+}
+async function addHomework(classId){
+  const subject=prompt("Dalykas:");
+  const description=prompt("Užduotis:");
+  const dueDate=prompt("Atlikimo data (YYYY-MM-DD):");
+  await db.collection("homework").add({classId,subject,description,dueDate});
+  alert("Namų darbai pridėti");
+}
+async function addAssessment(classId){
+  const subject=prompt("Dalykas:");
+  const type=prompt("Tipas (kontrolinis/atsiskaitymas/rašinys/apklausa):");
+  const date=prompt("Data (YYYY-MM-DD):");
+  await db.collection("assessments").add({classId,subject,type,date});
+  alert("Atsiskaitymas pridėtas");
+}
+
+// -------------------- MOKINYS --------------------
+async function loadStudent(uid){
+  const gradesSnapshot=await db.collection("grades").where("studentId","==",uid).get();
+  let html="<h4>Pažymiai:</h4><ul>";
+  gradesSnapshot.forEach(doc=>{const d=doc.data();html+=`<li>${d.subject} (${d.type}): ${d.value} - ${d.date}</li>`;});
+  html+="</ul>";
+  document.getElementById('dashboard').innerHTML=html;
+}
+
+// -------------------- TĖVAI --------------------
+async function loadParent(uid){
+  const userDoc=await db.collection("users").doc(uid).get();
+  const childId=userDoc.data().studentId;
+  const gradesSnapshot=await db.collection("grades").where("studentId","==",childId).get();
+  let html="<h4>Vaiko pažymiai:</h4><ul>";
+  gradesSnapshot.forEach(doc=>{const d=doc.data();html+=`<li>${d.subject} (${d.type}): ${d.value} - ${d.date}</li>`;});
+  html+="</ul>";
+  document.getElementById('dashboard').innerHTML=html;
+}
+</script>
+
+</body>
+</html>
