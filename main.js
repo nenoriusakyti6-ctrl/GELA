@@ -1,8 +1,3 @@
-// Import Firebase SDK
-import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
-import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
-import { getFirestore, doc, setDoc, getDoc, collection, addDoc, getDocs, query, where } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
-
 // Firebase config
 const firebaseConfig = {
   apiKey: "AIzaSyAvkDsz6eAoPN2dMqvoTho5xv1yc490V7A",
@@ -15,79 +10,124 @@ const firebaseConfig = {
 };
 
 // Init Firebase
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
 
-// Registration
-async function register(){
-  const email=document.getElementById('email').value;
-  const password=document.getElementById('password').value;
-  const role=document.getElementById('role').value;
-  try{
-    const userCredential = await createUserWithEmailAndPassword(auth,email,password);
-    await setDoc(doc(db,"users",userCredential.user.uid),{email,role});
-    alert("Registracija sėkminga");
-  }catch(err){alert(err.message);}
+// Elements
+const loginBtn = document.getElementById('login-btn');
+const logoutBtn = document.getElementById('logout-btn');
+
+loginBtn.addEventListener('click', login);
+logoutBtn.addEventListener('click', logout);
+
+function login() {
+  const email = document.getElementById('email').value;
+  const password = document.getElementById('password').value;
+
+  auth.signInWithEmailAndPassword(email, password)
+    .then(userCredential => db.collection('users').doc(userCredential.user.uid).get())
+    .then(docSnap => {
+      if (!docSnap.exists) {
+        alert("Šio vartotojo nėra. Kreipkitės į administratorių.");
+        auth.signOut();
+        return;
+      }
+      const role = docSnap.data().role;
+      document.getElementById('auth-section').style.display = 'none';
+      document.getElementById('app-section').style.display = 'block';
+      document.getElementById('user-name').innerText = email;
+      document.getElementById('user-role').innerText = role;
+      loadDashboard(role, docSnap.id);
+    })
+    .catch(err => alert("Neteisingas el. paštas arba slaptažodis"));
 }
 
-// Login
-async function login(){
-  const email=document.getElementById('email').value;
-  const password=document.getElementById('password').value;
-  try{
-    const userCredential = await signInWithEmailAndPassword(auth,email,password);
-    const userDoc = await getDoc(doc(db,"users",userCredential.user.uid));
-    document.getElementById('auth-section').style.display='none';
-    document.getElementById('app-section').style.display='block';
-    document.getElementById('user-name').innerText=email;
-    document.getElementById('user-role').innerText=userDoc.data().role;
-    loadDashboard(userDoc.data().role,userCredential.user.uid);
-  }catch(err){alert(err.message);}
-}
-
-// Logout
-async function logout(){
-  await signOut(auth);
-  document.getElementById('auth-section').style.display='block';
-  document.getElementById('app-section').style.display='none';
+function logout() {
+  auth.signOut();
+  document.getElementById('auth-section').style.display = 'block';
+  document.getElementById('app-section').style.display = 'none';
 }
 
 // Dashboard
-async function loadDashboard(role,uid){
-  const dash=document.getElementById('dashboard');
-  dash.innerHTML="";
-  if(role==="admin"){
-    dash.innerHTML+="<h3>Admin modulis</h3><button onclick='createClass()'>Kurti klasę</button><div id='classes-list'></div>";
+function loadDashboard(role, uid) {
+  const dash = document.getElementById('dashboard');
+  dash.innerHTML = "";
+  if (role === "admin") {
+    dash.innerHTML += `
+      <h3>Admin modulis</h3>
+      <button onclick='createUser("teacher")'>Pridėti mokytoją</button>
+      <button onclick='createUser("student")'>Pridėti mokinį</button>
+      <button onclick='createUser("parent")'>Pridėti tėvą</button>
+      <button onclick='createClass()'>Kurti klasę</button>
+      <div id='classes-list'></div>
+      <div id='users-list'></div>`;
     loadClasses();
-  }else if(role==="teacher"){
-    dash.innerHTML+="<h3>Mokytojo modulis</h3><div id='teacher-actions'></div>";
-    loadTeacher(uid);
-  }else if(role==="student"){
-    dash.innerHTML+="<h3>Mokinio modulis</h3>";
-    loadStudent(uid);
-  }else if(role==="parent"){
-    dash.innerHTML+="<h3>Tėvų modulis</h3>";
-    loadParent(uid);
+    loadUsers();
+  } else if (role === "teacher") {
+    dash.innerHTML += `
+      <h3>Mokytojo modulis</h3>
+      <button onclick='markAttendance()'>Žymėti lankomumą</button>
+      <button onclick='enterGrades()'>Įvesti pažymius</button>
+      <button onclick='addHomework()'>Namų darbai</button>
+      <button onclick='addAssignment()'>Atsiskaitymai</button>
+      <div id='teacher-data'></div>`;
+  } else if (role === "student") {
+    dash.innerHTML += `<h3>Mokinio modulis</h3><div id='student-data'></div>`;
+    viewStudentData(uid);
+  } else if (role === "parent") {
+    dash.innerHTML += `<h3>Tėvų modulis</h3><div id='parent-data'></div>`;
+    viewParentData(uid);
   }
 }
 
-// Admin functions
-async function createClass(){
-  const className=prompt("Įveskite klasės pavadinimą:");
-  if(!className) return;
-  await setDoc(doc(db,"classes",className),{name:className,students:[],teachers:[]});
-  loadClasses();
-}
-async function loadClasses(){
-  const snapshot = await getDocs(collection(db,"classes"));
-  let html="<ul>";
-  snapshot.forEach(doc=>{html+=`<li>${doc.id}</li>`});
-  html+="</ul>";
-  document.getElementById('classes-list').innerHTML=html;
+// ---------------- Admin Functions ----------------
+function createUser(role) {
+  const email = prompt("Įveskite el. paštą:");
+  const password = prompt("Įveskite slaptažodį:");
+  if (!email || !password) return;
+  auth.createUserWithEmailAndPassword(email, password)
+    .then(userCredential => {
+      return db.collection('users').doc(userCredential.user.uid).set({ email, role });
+    })
+    .then(() => { alert(role + " sukurtas"); loadUsers(); })
+    .catch(err => alert(err.message));
 }
 
-// Teacher, Student, Parent stubs
-async function loadTeacher(uid){ document.getElementById('teacher-actions').innerHTML="<p>Mokytojo funkcijos čia.</p>"; }
-async function loadStudent(uid){ document.getElementById('dashboard').innerHTML+="<p>Mokinio funkcijos čia.</p>"; }
-async function loadParent(uid){ document.getElementById('dashboard').innerHTML+="<p>Tėvų funkcijos čia.</p>"; }
+function createClass() {
+  const className = prompt("Įveskite klasės pavadinimą:");
+  if (!className) return;
+  db.collection('classes').doc(className).set({ name: className, students: [], teachers: [] })
+    .then(() => loadClasses());
+}
+
+function loadClasses() {
+  db.collection('classes').get().then(snapshot => {
+    let html = "<ul>";
+    snapshot.forEach(doc => { html += `<li>${doc.id}</li>`; });
+    html += "</ul>";
+    document.getElementById('classes-list').innerHTML = html;
+  });
+}
+
+function loadUsers() {
+  db.collection('users').get().then(snapshot => {
+    let html = "<ul>";
+    snapshot.forEach(doc => {
+      const data = doc.data();
+      html += `<li>${data.email} (${data.role})</li>`;
+    });
+    html += "</ul>";
+    document.getElementById('users-list').innerHTML = html;
+  });
+}
+
+// ---------------- Teacher Functions (stub) ----------------
+function markAttendance() { alert("Stub: Žymėti lankomumą"); }
+function enterGrades() { alert("Stub: Įvesti pažymius"); }
+function addHomework() { alert("Stub: Įvesti namų darbus"); }
+function addAssignment() { alert("Stub: Įvesti atsiskaitymus"); }
+
+// ---------------- Student / Parent Functions (stub) ----------------
+function viewStudentData(uid) { document.getElementById('student-data').innerHTML = "<p>Stub: Student info</p>"; }
+function viewParentData(uid) { document.getElementById('parent-data').innerHTML = "<p>Stub: Parent info</p>"; }
