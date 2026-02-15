@@ -9,51 +9,50 @@ const firebaseConfig = {
   measurementId: "G-RNP6YBNGRM"
 };
 
-// Init Firebase
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
 
-// Elements
-const loginBtn = document.getElementById('login-btn');
-const logoutBtn = document.getElementById('logout-btn');
+document.getElementById('login-btn').addEventListener('click', login);
+document.getElementById('logout-btn').addEventListener('click', logout);
 
-loginBtn.addEventListener('click', login);
-logoutBtn.addEventListener('click', logout);
-
-function login() {
+// Login function
+function login(){
   const email = document.getElementById('email').value;
   const password = document.getElementById('password').value;
 
-  auth.signInWithEmailAndPassword(email, password)
-    .then(userCredential => db.collection('users').doc(userCredential.user.uid).get())
-    .then(docSnap => {
-      if (!docSnap.exists) {
+  auth.signInWithEmailAndPassword(email,password)
+    .then(userCredential=>{
+      const uid = userCredential.user.uid;
+      return db.collection('users').doc(uid).get();
+    })
+    .then(docSnap=>{
+      if(!docSnap.exists){
         alert("Šio vartotojo nėra. Kreipkitės į administratorių.");
         auth.signOut();
         return;
       }
       const role = docSnap.data().role;
-      document.getElementById('auth-section').style.display = 'none';
-      document.getElementById('app-section').style.display = 'block';
+      document.getElementById('auth-section').style.display='none';
+      document.getElementById('app-section').style.display='block';
       document.getElementById('user-name').innerText = email;
       document.getElementById('user-role').innerText = role;
       loadDashboard(role, docSnap.id);
     })
-    .catch(err => alert("Neteisingas el. paštas arba slaptažodis"));
+    .catch(err=>alert("Neteisingas el. paštas arba slaptažodis"));
 }
 
-function logout() {
+function logout(){
   auth.signOut();
-  document.getElementById('auth-section').style.display = 'block';
-  document.getElementById('app-section').style.display = 'none';
+  document.getElementById('auth-section').style.display='block';
+  document.getElementById('app-section').style.display='none';
 }
 
-// Dashboard
-function loadDashboard(role, uid) {
+// Dashboard loader
+function loadDashboard(role,uid){
   const dash = document.getElementById('dashboard');
-  dash.innerHTML = "";
-  if (role === "admin") {
+  dash.innerHTML="";
+  if(role==="admin"){
     dash.innerHTML += `
       <h3>Admin modulis</h3>
       <button onclick='createUser("teacher")'>Pridėti mokytoją</button>
@@ -64,7 +63,7 @@ function loadDashboard(role, uid) {
       <div id='users-list'></div>`;
     loadClasses();
     loadUsers();
-  } else if (role === "teacher") {
+  } else if(role==="teacher"){
     dash.innerHTML += `
       <h3>Mokytojo modulis</h3>
       <button onclick='markAttendance()'>Žymėti lankomumą</button>
@@ -72,62 +71,85 @@ function loadDashboard(role, uid) {
       <button onclick='addHomework()'>Namų darbai</button>
       <button onclick='addAssignment()'>Atsiskaitymai</button>
       <div id='teacher-data'></div>`;
-  } else if (role === "student") {
+  } else if(role==="student"){
     dash.innerHTML += `<h3>Mokinio modulis</h3><div id='student-data'></div>`;
     viewStudentData(uid);
-  } else if (role === "parent") {
+  } else if(role==="parent"){
     dash.innerHTML += `<h3>Tėvų modulis</h3><div id='parent-data'></div>`;
     viewParentData(uid);
   }
 }
 
 // ---------------- Admin Functions ----------------
-function createUser(role) {
+function createUser(role){
   const email = prompt("Įveskite el. paštą:");
   const password = prompt("Įveskite slaptažodį:");
-  if (!email || !password) return;
-  auth.createUserWithEmailAndPassword(email, password)
-    .then(userCredential => {
-      return db.collection('users').doc(userCredential.user.uid).set({ email, role });
+  if(!email || !password) return;
+  auth.createUserWithEmailAndPassword(email,password)
+    .then(uc=>{
+      return db.collection('users').doc(uc.user.uid).set({email,role});
     })
-    .then(() => { alert(role + " sukurtas"); loadUsers(); })
-    .catch(err => alert(err.message));
+    .then(()=>{ alert(role+" sukurtas"); loadUsers(); })
+    .catch(err=>alert(err.message));
 }
 
-function createClass() {
-  const className = prompt("Įveskite klasės pavadinimą:");
-  if (!className) return;
-  db.collection('classes').doc(className).set({ name: className, students: [], teachers: [] })
-    .then(() => loadClasses());
+function createClass(){
+  const name = prompt("Įveskite klasės pavadinimą:");
+  if(!name) return;
+  db.collection('classes').doc(name).set({name,students:[],teachers:[]})
+    .then(()=>loadClasses());
 }
 
-function loadClasses() {
-  db.collection('classes').get().then(snapshot => {
-    let html = "<ul>";
-    snapshot.forEach(doc => { html += `<li>${doc.id}</li>`; });
-    html += "</ul>";
+function loadClasses(){
+  db.collection('classes').get().then(snapshot=>{
+    let html="<ul>";
+    snapshot.forEach(doc=>html+=`<li>${doc.id}</li>`);
+    html+="</ul>";
     document.getElementById('classes-list').innerHTML = html;
   });
 }
 
-function loadUsers() {
-  db.collection('users').get().then(snapshot => {
-    let html = "<ul>";
-    snapshot.forEach(doc => {
-      const data = doc.data();
-      html += `<li>${data.email} (${data.role})</li>`;
+function loadUsers(){
+  db.collection('users').get().then(snapshot=>{
+    let html="<ul>";
+    snapshot.forEach(doc=>{
+      const data=doc.data();
+      html+=`<li>${data.email} (${data.role})</li>`;
     });
-    html += "</ul>";
+    html+="</ul>";
     document.getElementById('users-list').innerHTML = html;
   });
 }
 
-// ---------------- Teacher Functions (stub) ----------------
-function markAttendance() { alert("Stub: Žymėti lankomumą"); }
-function enterGrades() { alert("Stub: Įvesti pažymius"); }
-function addHomework() { alert("Stub: Įvesti namų darbus"); }
-function addAssignment() { alert("Stub: Įvesti atsiskaitymus"); }
+// ---------------- Teacher Functions ----------------
+function markAttendance(){ addData("attendance","Žymėjimas"); }
+function enterGrades(){ addData("grades","Pažymys"); }
+function addHomework(){ addData("homework","Namų darbas"); }
+function addAssignment(){ addData("assignments","Atsiskaitymas"); }
 
-// ---------------- Student / Parent Functions (stub) ----------------
-function viewStudentData(uid) { document.getElementById('student-data').innerHTML = "<p>Stub: Student info</p>"; }
-function viewParentData(uid) { document.getElementById('parent-data').innerHTML = "<p>Stub: Parent info</p>"; }
+function addData(collectionName,label){
+  const value = prompt(`Įveskite ${label}`);
+  if(!value) return;
+  const email = document.getElementById('user-name').innerText;
+  db.collection(collectionName).add({teacher: email,value,date: new Date().toLocaleDateString()})
+    .then(()=>alert(label+" įrašytas"));
+}
+
+// ---------------- Student / Parent Functions ----------------
+function viewStudentData(uid){
+  let html="<h4>Pažymiai</h4><ul>";
+  db.collection("grades").get().then(snap=>{
+    snap.forEach(doc=>html+=`<li>${doc.data().value}</li>`);
+    html+="</ul>";
+    document.getElementById('student-data').innerHTML=html;
+  });
+}
+
+function viewParentData(uid){
+  let html="<h4>Vaiko pažymiai</h4><ul>";
+  db.collection("grades").get().then(snap=>{
+    snap.forEach(doc=>html+=`<li>${doc.data().value}</li>`);
+    html+="</ul>";
+    document.getElementById('parent-data').innerHTML=html;
+  });
+}
