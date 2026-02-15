@@ -1,0 +1,5 @@
+body { font-family: Arial, sans-serif; margin: 20px; background:#f7f7f7; }
+input, select, button { margin:5px; padding:5px; }
+h1,h2,h3,h4 { margin-top:20px; }
+#dashboard { margin-top:20px; padding:10px; background:#fff; border-radius:5px; }
+button { cursor:pointer; }
